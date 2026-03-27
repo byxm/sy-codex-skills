@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Sync Delivery"
+  short_description: "提交、推送、GitLab MR 创建与多分支 cherry-pick 同步交付工作流。"
+  default_prompt: "Use $git-sync-delivery to commit the current changes, infer the target branch, create the main GitLab MR, and coordinate cherry-pick delivery."
