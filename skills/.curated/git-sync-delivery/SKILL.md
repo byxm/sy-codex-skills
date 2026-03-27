@@ -54,6 +54,14 @@ skill 在开始执行时，应记录当前原始工作分支名称
 - 遭遇 merge / cherry-pick 冲突
 - 出现无法可靠推理、可能误操作的异常情况
 
+优先使用 `scripts/` 下的小脚本执行高频 git 操作，避免拼接带动态分支名和 commit hash 的超长命令，降低重复授权提示。
+
+当前内置脚本：
+
+- `scripts/sync-target-branch.sh <branch> [remote]`
+- `scripts/sync-current-branch.sh <branch> [remote]`
+- `scripts/prepare-cherry-pick-branch.sh <target-branch> <temp-branch> [remote]`
+
 ## 五、整体流程（Workflow）
 用户调用 skill 时，可以附带一段前置 message，用于说明本次提交的语义上下文
 - 例如：
@@ -113,7 +121,7 @@ skill 在开始执行时，应记录当前原始工作分支名称
 
 流程：
 
-- 先同步目标分支远程状态：`git fetch origin`，并将本地目标分支更新到远程最新提交
+- 优先执行 `scripts/sync-target-branch.sh <target-branch>`
 - 基于同步后的目标分支创建临时校验分支
 - 在临时校验分支上尝试将当前分支 merge 到目标分支
 - 若无冲突 -> 继续
@@ -136,7 +144,7 @@ skill 在开始执行时，应记录当前原始工作分支名称
 
 流程：
 
-- 先同步远程状态：`git fetch origin`
+- 优先执行 `scripts/sync-current-branch.sh <current-branch>`
 - 检查当前工作分支是否存在远程同名分支
 - 若不存在远程同名分支 -> 直接进入下一步
 - 若存在远程同名分支：
@@ -198,12 +206,11 @@ skill 在开始执行时，应记录当前原始工作分支名称
 
 ### Step 9：执行 cherry-pick
 对每个目标分支执行：
-1. 先同步远程状态：`git fetch origin`
-2. 将本地目标分支更新到远程最新提交；若本地不存在，则从远程创建
-3. 基于同步后的目标分支创建本次 cherry-pick 使用的临时分支
-4. 在临时分支上执行 cherry-pick
-5. 若成功 -> 继续
-6. 若冲突：
+1. 优先执行 `scripts/prepare-cherry-pick-branch.sh <target-branch> <temp-branch>`
+2. 该脚本内部负责同步远程目标分支，并基于最新目标分支创建本次 cherry-pick 使用的临时分支
+3. 在临时分支上执行 cherry-pick
+4. 若成功 -> 继续
+5. 若冲突：
    - 暂停流程
    - 告知当前目标分支、临时分支、冲突文件
    - 等待用户解决
