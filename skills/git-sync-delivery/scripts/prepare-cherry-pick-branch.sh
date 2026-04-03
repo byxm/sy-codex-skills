@@ -12,6 +12,11 @@ temp_branch="$2"
 remote="${3:-origin}"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
+if [[ "$temp_branch" != "$target_branch"* ]]; then
+  echo "TEMP_BRANCH_MUST_START_WITH_TARGET=$target_branch" >&2
+  exit 1
+fi
+
 "$script_dir/sync-target-branch.sh" "$target_branch" "$remote"
 
 if git show-ref --verify --quiet "refs/heads/$temp_branch"; then

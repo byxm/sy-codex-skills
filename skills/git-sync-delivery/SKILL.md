@@ -10,11 +10,11 @@ description: 基于当前代码改动执行提交、推理目标分支、创建G
 该 skill 用于在代码准备就绪后，自动完成以下流程：
 
 - 生成或确认 commit message
+- 一次性推理并确认目标合并分支（merge target）与后续 cherry-pick 目标分支
 - 创建 commit
-- 推理并确认目标合并分支（merge target）
 - 进行本地预合并检查（pre-merge validation）
 - 推送代码并创建主 MR（GitLab）
-- 推理并执行多分支 cherry-pick
+- 执行多分支 cherry-pick
 - 为每个分支创建对应 MR
 - 汇总并输出所有 MR 链接，供最终 review
 
@@ -49,8 +49,7 @@ skill 在开始执行时，应记录当前原始工作分支名称
 ## 四、执行规则
 除以下场景外，其余 git / 脚本执行默认直接继续，不逐步询问用户确认：
 - 确认 commit message
-- 确认 merge target 推理结果
-- 确认 cherry-pick 目标分支列表
+- 确认交付计划（merge target + cherry-pick 目标分支列表）
 - 遭遇 merge / cherry-pick 冲突
 - 出现无法可靠推理、可能误操作的异常情况
 
@@ -61,6 +60,7 @@ skill 在开始执行时，应记录当前原始工作分支名称
 - `scripts/sync-target-branch.sh <branch> [remote]`
 - `scripts/sync-current-branch.sh <branch> [remote]`
 - `scripts/prepare-cherry-pick-branch.sh <target-branch> <temp-branch> [remote]`
+- `scripts/delete-remote-branches.sh <branch>... [--remote <remote>]`
 
 ## 五、整体流程（Workflow）
 用户调用 skill 时，可以附带一段前置 message，用于说明本次提交的语义上下文
@@ -89,31 +89,61 @@ skill 在开始执行时，应记录当前原始工作分支名称
 
 确认后继续。
 
-### Step 2：创建 commit
+### Step 2：一次性推理并确认交付计划
 
-- 使用确认后的 commit message 创建 commit
+在创建 commit 之前，必须基于“当前工作分支 + 已确认的 commit message 语义”一次性完成以下推理，并只向用户确认一次：
 
-### Step 3：推理并确认目标分支（merge target）
+1. 推理目标合并分支（merge target）
+2. 推理后续需要 cherry-pick 的更高版本目标分支列表
 
-1. 根据当前分支名称推理目标分支
+要求：
 
-推理规则示例：
+- merge target 与 cherry-pick 目标分支必须在同一次输出中展示，不允许拆成两轮确认
+- 若推理结果为空，也要明确展示“无需 cherry-pick”的结论，再由用户统一确认
+- 用户可以在这一步同时修改 merge target 和 cherry-pick 目标分支列表
+- 未完成这一步统一确认前，不创建 commit，也不执行任何 push / cherry-pick
+
+merge target 推理规则示例：
 
 - `test_bugfix/xxx` -> `test`
 - `hotfix/5.0-xxx-user` -> `hotfix/5.0-xxx`
 
-2. 输出推理结果：
+cherry-pick 推理原则：
+
+1. 当前分支为低版本时，应向更高版本分支同步
+2. test 分支视为高版本分支之一
+3. 基于版本号向上推理（如 5.0 -> 5.1 -> test）
+
+输出结构示例：
 
 ```text
-推测目标分支为：xxx
+本次交付计划：
+
+commit message：xxx
+
+主MR目标分支：xxx
 推理依据：xxx
+
+建议 cherry-pick 目标分支：
+- xxx
+- xxx
+
+若无需 cherry-pick，则明确输出：
+- 无需额外同步分支
 ```
 
-3. 用户选择：
+用户可：
 
-- 确认使用
-- 手动修改
+- 整体确认
+- 手动修改 merge target
+- 手动修改 cherry-pick 目标分支列表
 - 取消流程
+
+确认后继续。
+
+### Step 3：创建 commit
+
+- 使用确认后的 commit message 创建 commit
 
 ### Step 4：预合并检查（pre-merge validation）
 
@@ -172,39 +202,7 @@ skill 在开始执行时，应记录当前原始工作分支名称
   - MR title = commit message
   - 不强制生成 description
 
-### Step 7：是否进行 cherry-pick 推理
-
-询问用户：
-
-- 是否需要进行多分支同步（cherry-pick）
-
-用户选择后继续。
-
-### Step 8：推理 cherry-pick 目标分支
-
-推理原则：
-
-1. 当前分支为低版本时，应向更高版本分支同步
-2. test 分支视为高版本分支之一
-3. 基于版本号向上推理（如 5.0 -> 5.1 -> test）
-
-输出：
-
-建议 cherry-pick 到以下分支：
-
-- xxx
-- xxx
-
-用户可：
-
-- 确认全部
-- 删除部分
-- 手动补充
-- 取消
-
-未确认前，不执行任何 cherry-pick。
-
-### Step 9：执行 cherry-pick
+### Step 7：执行 cherry-pick
 对每个目标分支执行：
 1. 优先执行 `scripts/prepare-cherry-pick-branch.sh <target-branch> <temp-branch>`
 2. 该脚本内部负责同步远程目标分支，并基于最新目标分支创建本次 cherry-pick 使用的临时分支
@@ -218,23 +216,26 @@ skill 在开始执行时，应记录当前原始工作分支名称
 要求：
 
 - 不允许直接从可能落后的本地目标分支 checkout 后执行 cherry-pick
-- 临时分支必须明确标识来源目标分支，便于冲突恢复和清理
+- 临时分支必须以目标分支名称开头，便于从分支名直接识别来源目标分支
+- 例如：若目标分支是 `hotfix/5.30-hotfix_20260330`，则临时分支名必须形如 `hotfix/5.30-hotfix_20260330-xxx`
 - 若用户终止流程，必须先中止 cherry-pick，再切回原始工作分支，并删除本次创建的临时分支
 
 用户确认后继续执行剩余流程。
 
-### Step 10：为每个分支创建 MR
+### Step 8：为每个分支创建 MR
 
 - 每个 cherry-pick 分支创建对应 MR
 - MR title 默认使用 commit message
-- 所有 cherry-pick 执行完成后，删除本次为 cherry-pick 创建的本地临时分支
+- 所有 cherry-pick 对应 MR 创建完成后，删除本次为 cherry-pick 创建的远程临时分支
+- 优先执行 `scripts/delete-remote-branches.sh <branch>...`
+- 远程临时分支删除完成后，再删除本次为 cherry-pick 创建的本地临时分支
 - 将当前分支切回到 Step 2 创建 commit 时所在的原始工作分支
 - 最终保证本地仓库回到用户最初发起流程时的主工作分支
-- 删除的仅限本次 workflow 创建的 cherry-pick 临时分支
+- 删除的仅限本次 workflow 创建的 cherry-pick 临时分支（包含远程与本地）
 - 不删除用户原有分支
-- 若删除失败，需要告知用户，但不影响已创建的 MR 结果输出
+- 若远程或本地删除失败，需要告知用户具体失败分支，但不影响已创建的 MR 结果输出
 
-### Step 11：输出最终结果
+### Step 9：输出最终结果
 
 输出结构如下：
 
@@ -286,6 +287,10 @@ Cherry-pick MR：
   - 立即暂停流程
   - 明确当前卡在哪一步、哪个分支
   - 不自动尝试解决冲突
+- 一旦远程临时分支删除失败：
+  - 不回滚已经完成的 cherry-pick / MR 创建结果
+  - 明确列出删除失败的远程分支
+  - 保持原始工作分支恢复完成，并提示用户后续可手动删除
 - 在提示中说明该操作是基于远程最新目标分支执行，还是在同步远程同名工作分支时发生，避免用户误判冲突来源
 
 恢复方式：
