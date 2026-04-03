@@ -9,7 +9,7 @@
 所有 skill 统一放在：
 
 ```text
-skills/.curated/<skill-name>/
+skills/<skill-name>/
 ```
 
 当前已收录的 skill：
@@ -18,20 +18,20 @@ skills/.curated/<skill-name>/
 
 对应安装路径：
 
-- `skills/.curated/git-sync-delivery`
+- `skills/git-sync-delivery`
 
 ## 安装方式
 
 使用 Codex skill installer，通过仓库名和路径安装：
 
 ```bash
-scripts/install-skill-from-github.py --repo byxm/sy-codex-skills --path skills/.curated/git-sync-delivery
+scripts/install-skill-from-github.py --repo byxm/sy-codex-skills --path skills/git-sync-delivery
 ```
 
 也可以直接使用 GitHub URL 安装：
 
 ```bash
-scripts/install-skill-from-github.py --url https://github.com/byxm/sy-codex-skills/tree/main/skills/.curated/git-sync-delivery
+scripts/install-skill-from-github.py --url https://github.com/byxm/sy-codex-skills/tree/main/skills/git-sync-delivery
 ```
 
 安装完成后，重启 Codex 使新 skill 生效。
@@ -55,7 +55,7 @@ scripts/install-skill-from-github.py --url https://github.com/byxm/sy-codex-skil
 如果后续要新增 skill，继续按下面的目录规则添加即可：
 
 ```text
-skills/.curated/<new-skill-name>/
+skills/<new-skill-name>/
 ```
 
 每个 skill 建议至少包含：
