@@ -1,0 +1,4 @@
+interface:
+  display_name: "Init Harness"
+  short_description: "在目标工程中初始化 Harness 目录、模板和项目级 memory 初稿。"
+  default_prompt: "Use $init-harness to initialize a docs/ai Harness structure for the current project or a specified target directory."

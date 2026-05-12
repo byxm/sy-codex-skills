@@ -2,7 +2,7 @@
 
 这是一个用于沉淀和分发 Codex Skills 的仓库，采用可持续扩展的 monorepo 结构。
 
-仓库中的每个 skill 都放在固定路径下，支持按路径单独安装。当前首个公开 skill 是 `git-sync-delivery`。
+仓库中的每个 skill 都放在固定路径下，支持按路径单独安装。
 
 ## 仓库结构
 
@@ -15,10 +15,12 @@ skills/<skill-name>/
 当前已收录的 skill：
 
 - `git-sync-delivery`
+- `init-harness`
 
 对应安装路径：
 
 - `skills/git-sync-delivery`
+- `skills/init-harness`
 
 ## 安装方式
 
@@ -28,10 +30,20 @@ skills/<skill-name>/
 scripts/install-skill-from-github.py --repo byxm/sy-codex-skills --path skills/git-sync-delivery
 ```
 
+安装 `init-harness`：
+
+```bash
+scripts/install-skill-from-github.py --repo byxm/sy-codex-skills --path skills/init-harness
+```
+
 也可以直接使用 GitHub URL 安装：
 
 ```bash
 scripts/install-skill-from-github.py --url https://github.com/byxm/sy-codex-skills/tree/main/skills/git-sync-delivery
+```
+
+```bash
+scripts/install-skill-from-github.py --url https://github.com/byxm/sy-codex-skills/tree/main/skills/init-harness
 ```
 
 安装完成后，重启 Codex 使新 skill 生效。
@@ -49,6 +61,18 @@ scripts/install-skill-from-github.py --url https://github.com/byxm/sy-codex-skil
 - 多分支 cherry-pick 同步交付
 
 适用于需要将改动同步到多个版本分支的前端交付场景。
+
+### init-harness
+
+用于在任意工程中初始化一套中文 Harness 目录、模板和项目级 memory 初稿，主要覆盖：
+
+- `docs/ai` 骨架生成
+- 任务简报、人工反馈、Code Review、分层评估、缺陷回流、外部资料模板
+- 基于目标目录扫描生成项目级长期记忆初稿
+- 任务接力、路径迁移和结构权威来源规则
+- 可选浏览器侧验证章节
+
+适用于希望在大工程中稳定任务上下文，并让 Agent 在人工验证后稳定吸收反馈继续修正的场景。
 
 ## 后续扩展
 
